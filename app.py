@@ -1,8 +1,6 @@
 import streamlit as st
 import numpy as np
 import cv2
-import urllib.request
-import os
 from math import radians, sin, cos, sqrt, atan2
 
 st.set_page_config(page_title="HCM Face Check-In & Geofencing")
@@ -43,16 +41,16 @@ if camera_input is not None:
 
     gray = cv2.cvtColor(cv2_img, cv2.COLOR_BGR2GRAY)
     
-    # Safe local download for Haar Cascade to bypass cloud path issues
-    cascade_file = 'haarcascade_frontalface_default.xml'
-    if not os.path.exists(cascade_file) or os.path.getsize(cascade_file) < 1000:
-        url = 'https://raw.githubusercontent.com/opencv/opencv/master/data/haarcascades/haarcascade_frontalface_default.xml'
-        urllib.request.urlretrieve(url, cascade_file)
-
-    face_cascade = cv2.CascadeClassifier(cascade_file)
-    faces = face_cascade.detectMultiScale(gray, 1.1, 4)
-
-    if len(faces) > 0:
-        st.success("🎉 Face Recognized Successfully! Attendance Marked.")
+    # Safe Cascade Loading
+    cascade_path = cv2.data.haarcascades + 'haarcascade_frontalface_default.xml'
+    face_cascade = cv2.CascadeClassifier()
+    
+    if not face_cascade.load(cv2.samples.findFile(cascade_path)):
+        st.error("Error: Could not load face cascade classifier.")
     else:
-        st.warning("⚠️ No face detected clearly. Please try again.")
+        faces = face_cascade.detectMultiScale(gray, scaleFactor=1.1, minNeighbors=4)
+
+        if len(faces) > 0:
+            st.success("🎉 Face Recognized Successfully! Attendance Marked.")
+        else:
+            st.warning("⚠️ No face detected clearly. Please try again.")
