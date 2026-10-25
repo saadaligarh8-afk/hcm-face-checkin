@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>HCM Lite - Facial Recognition & Location Attendance</title>
+    <style>
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; text-align: center; padding: 20px; background: #f4f7f6; color: #333; }
+        h2 { color: #2c3e50; margin-bottom: 25px; }
+        .card { background: white; padding: 25px; border-radius: 10px; display: inline-block; box-shadow: 0px 4px 12px rgba(0,0,0,0.1); margin: 15px; width: 360px; vertical-align: top; text-align: left; }
+        .card h3 { margin-top: 0; text-align: center; color: #2c3e50; border-bottom: 2px solid #f0f0f0; padding-bottom: 10px; }
+        label { font-size: 13px; font-weight: bold; color: #555; display: block; margin-top: 10px; }
+        input { width: 100%; padding: 10px; margin: 5px 0 15px 0; box-sizing: border-box; border: 1px solid #ccc; border-radius: 5px; font-size: 14px; }
+        button { width: 100%; padding: 11px; background: #007bff; color: white; border: none; border-radius: 5px; cursor: pointer; font-size: 15px; font-weight: 600; transition: background 0.2s; }
+        button:hover { background: #0056b3; }
+        button:disabled { background: #cccccc; cursor: not-allowed; }
+        #message, #adminMessage { margin-top: 15px; font-weight: 600; text-align: center; font-size: 13px; line-height: 1.4; }
+        .center-box { text-align: center; }
+        video { border: 2px solid #ddd; border-radius: 6px; background: #000; }
+    </style>
+</head>
+<body>
+
+    <h2>HCM System - Facial Recognition & Geofenced Attendance</h2>
+
+    <!-- Admin Panel Card -->
+    <div class="card">
+        <h3>Admin Configuration</h3>
+        <label>Office Latitude:</label>
+        <input type="text" id="lat" value="24.8607">
+        
+        <label>Office Longitude:</label>
+        <input type="text" id="lng" value="67.0011">
+        
+        <label>Radius (meters):</label>
+        <input type="text" id="radius" value="5000">
+        
+        <button onclick="updateSettings()">Save Office Settings</button>
+        <button onclick="useCurrentLocation()" style="background: #28a745; margin-top: 10px;">Use Current GPS as Office</button>
+        <p id="adminMessage"></p>
+    </div>
+
+    <!-- Employee Check-In Card -->
+    <div class="card center-box">
+        <h3>Employee Portal</h3>
+        <video id="video" width="320" height="240" autoplay playsinline></video>
+        <br>
+        <button id="checkInBtn" onclick="handleCheckIn()" style="margin-top: 15px;">Check In</button>
+        <p id="message"></p>
+    </div>
+
+    <canvas id="canvas" width="320" height="240" style="display:none;"></canvas>
+
+    <script>
+        const video = document.getElementById('video');
+        navigator.mediaDevices.getUserMedia({ video: true })
+            .then(stream => { video.srcObject = stream; })
+            .catch(err => { alert('Camera access denied or unavailable.'); });
+
+        // Update Settings Function
+        async function updateSettings() {
+            const latitude = document.getElementById('lat').value;
+            const longitude = document.getElementById('lng').value;
+            const radius = document.getElementById('radius').value;
+            const msg = document.getElementById('adminMessage');
+
+            try {
+                const res = await fetch('/api/settings', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ latitude, longitude, radius })
+                });
+                const data = await res.json();
+                msg.style.color = res.ok ? 'green' : 'red';
+                msg.innerText = data.message;
+            } catch (err) {
+                msg.style.color = 'red';
+                msg.innerText = 'Failed to connect to the server.';
+            }
+        }
+
+        // Helper to grab current GPS and set it as office location instantly
+        function useCurrentLocation() {
+            const msg = document.getElementById('adminMessage');
+            if (!navigator.geolocation) {
+                msg.innerText = "Geolocation is not supported by your browser.";
+                return;
+            }
+            navigator.geolocation.getCurrentPosition(pos => {
+                document.getElementById('lat').value = pos.coords.latitude;
+                document.getElementById('lng').value = pos.coords.longitude;
+                msg.style.color = 'green';
+                msg.innerText = "Current GPS captured successfully. Click 'Save Office Settings'.";
+            }, () => {
+                msg.style.color = 'red';
+                msg.innerText = "GPS permission denied or unavailable.";
+            }, { enableHighAccuracy: true });
+        }
+
+        // Check-In Function
+        async function handleCheckIn() {
+            const btn = document.getElementById('checkInBtn');
+            const msg = document.getElementById('message');
+            btn.disabled = true;
+            msg.style.color = '#333';
+            msg.innerText = "Processing verification...";
+
+            if (!navigator.geolocation) {
+                msg.style.color = 'red';
+                msg.innerText = "Geolocation is not supported by your browser.";
+                btn.disabled = false;
+                return;
+            }
+
+            navigator.geolocation.getCurrentPosition(async position => {
+                const { latitude, longitude, accuracy } = position.coords;
+
+                const canvas = document.getElementById('canvas');
+                canvas.getContext('2d').drawImage(video, 0, 0, 320, 240);
+                const imageSrc = canvas.toDataURL('image/jpeg');
+
+                try {
+                    const response = await fetch('/api/attendance/check-in', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ latitude, longitude, accuracy, image: imageSrc })
+                    });
+                    const data = await response.json();
+                    msg.style.color = response.ok ? 'green' : 'red';
+                    msg.innerText = data.message;
+                } catch (err) {
+                    msg.style.color = 'red';
+                    msg.innerText = "Server connection error.";
+                } finally {
+                    btn.disabled = false;
+                }
+            }, error => {
+                msg.style.color = 'red';
+                msg.innerText = "Please enable GPS location permissions to check in.";
+                btn.disabled = false;
+            }, { enableHighAccuracy: true });
+        }
+    </script>
+</body>
+</html>
