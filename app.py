@@ -33,7 +33,7 @@ if st.button("Verify Location"):
         st.error(f"❌ Access Denied! You are too far from the office ({round(dist, 2)} meters away).")
 
 st.subheader("2. Facial Recognition Check-In")
-camera_image = st.camera_image("Take a picture for attendance")
+camera_input = st.camera_input("Take a picture for attendance")
 
 if camera_image is not None:
     bytes_data = camera_image.getvalue()
