@@ -3,7 +3,7 @@ import numpy as np
 import cv2
 from math import radians, sin, cos, sqrt, atan2
 
-st.set_page_title("HCM Face Check-In & Geofencing")
+st.set_page_config(page_title="HCM Face Check-In & Geofencing")
 st.title("🏢 HCM Attendance & Geofencing System")
 
 # Geofencing Calculation (Haversine Formula)
