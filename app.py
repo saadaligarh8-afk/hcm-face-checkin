@@ -35,8 +35,8 @@ if st.button("Verify Location"):
 st.subheader("2. Facial Recognition Check-In")
 camera_input = st.camera_input("Take a picture for attendance")
 
-if camera_image is not None:
-    bytes_data = camera_image.getvalue()
+if camera_input is not None:
+    bytes_data = camera_input.getvalue()
     cv2_img = cv2.imdecode(np.frombuffer(bytes_data, np.uint8), cv2.IMREAD_COLOR)
 
     gray = cv2.cvtColor(cv2_img, cv2.COLOR_BGR2GRAY)
